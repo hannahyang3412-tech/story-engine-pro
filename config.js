@@ -1,19 +1,38 @@
 // 全局 Worker 代理地址
 const WORKER_PROXY = 'https://moxinglaqu.lucyabbyhannah.workers.dev/?url=';
 
-// 默认预设剧本
+// 预设剧本库（每个剧本均预留自身独立风格主题、背景色与标签）
 const PRESET_SCRIPTS = [
   {
     id: "script_haunted_mansion",
     title: "雾隐古宅的第十三阶",
     tag: "悬疑解密",
     description: "荒废百年的尖顶古宅深立于浓雾之中。每一步都踩在亡者的琴弦上……",
+    themeColor: "amber",
+    bgGradient: "from-amber-950/40 via-stone-900 to-indigo-950/40",
     nodes: [
       {
         choices: [
           "握住铁门链条，用力将其拉开",
           "询问同伴是否听到异响",
           "勘查泥地里残留的拖拽痕迹"
+        ]
+      }
+    ]
+  },
+  {
+    id: "script_warm_sunset",
+    title: "落日余晖下的旧书店",
+    tag: "治愈日常",
+    description: "晚风吹起风铃的叮当声，旧书店阁楼的茶香里，藏着尚未言说的心事。",
+    themeColor: "rose",
+    bgGradient: "from-rose-950/30 via-stone-900 to-amber-950/30",
+    nodes: [
+      {
+        choices: [
+          "递给TA一杯热红茶",
+          "翻开那本夹着干花签的书",
+          "转头看窗外被夕阳染红的天空"
         ]
       }
     ]
