@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>StoryEngine - 终极角色沉浸互动引擎</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased select-none font-sans">
+  <div id="app" class="h-[100dvh] max-w-md mx-auto flex flex-col bg-slate-900 shadow-2xl relative overflow-hidden">
+
+    <!-- 开机封面 -->
+    <section v-if="currentStep === 'boot'" class="h-full w-full flex flex-col justify-between items-center p-8 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950/40 relative z-50">
+      <div class="w-full flex justify-end">
+        <button @click="openSettings" class="text-xs text-slate-500 hover:text-indigo-400 p-2">⚙️ 接口设置</button>
+      </div>
+
+      <div class="text-center space-y-4 my-auto">
+        <div class="inline-block p-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-2">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+        <h1 class="text-3xl font-serif tracking-[0.25em] text-slate-100 font-light pl-2">命运交织</h1>
+        <p class="text-xs text-slate-400 tracking-[0.4em] uppercase font-light pl-1">StoryEngine & Affection</p>
+      </div>
+
+      <div class="w-full pb-6">
+        <button @click="currentStep = 'mode_hub'" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white rounded-2xl text-xs font-semibold tracking-widest transition shadow-lg shadow-indigo-500/25">
+          启程进入
+        </button>
+      </div>
+    </section>
+
+    <!-- 顶部状态栏 -->
+    <header v-if="currentStep !== 'boot'" class="h-14 px-3 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/90 backdrop-blur z-20">
+      <div class="flex items-center space-x-1 overflow-hidden">
+        <button @click="handleStepBack" class="p-1.5 -ml-1 text-slate-300 hover:text-white flex items-center gap-1 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          <span class="text-xs font-medium">{{ backButtonText }}</span>
+        </button>
+        <span class="text-xs font-bold text-slate-100 truncate w-28">{{ currentTitle }}</span>
+      </div>
+
+      <div class="flex items-center space-x-1.5 text-xs shrink-0">
+        <button @click="openPersonaManager" :class="currentStep === 'persona_mgr' ? 'bg-indigo-600 text-white' : 'text-slate-400 bg-slate-800/80'" class="hover:text-indigo-300 py-1.5 px-2.5 rounded-lg transition font-medium">人设</button>
+        <button @click="openSettings" :class="currentStep === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 bg-slate-800/80'" class="hover:text-indigo-300 py-1.5 px-2.5 rounded-lg transition font-medium">设置</button>
+      </div>
+    </header>
+
+    <!-- 主视口 -->
+    <main v-if="currentStep !== 'boot'" class="flex-1 overflow-hidden relative flex flex-col">
+
+      <!-- 模式选择枢纽 -->
+      <section v-show="currentStep === 'mode_hub'" class="h-full overflow-y-auto p-4 space-y-3.5 flex flex-col justify-center no-scrollbar">
+        <div class="text-center space-y-0.5 mb-1">
+          <h2 class="text-base font-bold text-white tracking-wider">选择体验空间</h2>
+          <p class="text-[11px] text-slate-400">开启互动、查阅羁绊或查收TA的深夜心意</p>
+        </div>
+
+        <div @click="currentStep = 'scripts'" class="bg-gradient-to-br from-amber-950/40 via-slate-900 to-indigo-950/50 border border-amber-500/30 hover:border-amber-400/60 rounded-2xl p-4 cursor-pointer transition shadow-lg space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold uppercase">跑团剧场</span>
+            <span class="text-[9px] text-amber-400/80 font-mono">{{ activeSessions.length }} 存档</span>
+          </div>
+          <h3 class="text-sm font-bold text-white">📖 命运交织 · 互动剧情</h3>
+          <p class="text-[11px] text-slate-300 leading-relaxed">主导式跑团、微光线索搜查、多伴侣修罗场冒险。</p>
+        </div>
+
+        <div @click="openDailyChatSetup" class="bg-gradient-to-br from-purple-950/40 via-slate-900 to-pink-950/30 border border-purple-500/30 hover:border-purple-400/60 rounded-2xl p-4 cursor-pointer transition shadow-lg space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold uppercase">随聊陪伴</span>
+            <span class="text-[9px] text-purple-400/80 font-mono">{{ activeDailySessions.length }} 对话</span>
+          </div>
+          <h3 class="text-sm font-bold text-white">💬 时光漫语 · 日常随聊</h3>
+          <p class="text-[11px] text-slate-300 leading-relaxed">契合 Char 真实人设，享受手动接收的日常陪伴。</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button @click="openAffectionBoard" class="py-2.5 px-3 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition shadow">
+            <span>🗺️ 羁绊好感看板</span>
+          </button>
+          <button @click="openMidnightLetterModal" class="py-2.5 px-3 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition shadow">
+            <span>💌 TA的深夜来信</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 剧本大厅 -->
+      <section v-show="currentStep === 'scripts'" class="h-full overflow-y-auto p-4 space-y-4 no-scrollbar">
+        <div class="flex items-center justify-between px-1">
+          <button @click="currentStep = 'ongoing'" class="text-xs text-indigo-300 hover:underline flex items-center gap-1">
+            <span>⏳ 查看正在进行的探险存档 ({{ activeSessions.length }})</span>
+          </button>
+        </div>
+
+        <!-- TA的心愿入口 -->
+        <div @click="openCharAuthoredModal" class="bg-gradient-to-r from-rose-950/50 via-purple-950/50 to-slate-900 border border-rose-500/40 hover:border-rose-400 rounded-2xl p-4 cursor-pointer transition shadow-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold uppercase">角色反向带跑</span>
+            <span class="text-[10px] text-rose-400 font-mono">基于人设与日常记忆执笔</span>
+          </div>
+          <h2 class="text-base font-bold text-white flex items-center gap-1.5">
+            <span>💌 TA的心愿 · 为你定制专属剧本</span>
+          </h2>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            由 Char 依据自身执念、人设背景或日常闲聊线索，反向为你设计一场探险！
+          </p>
+        </div>
+
+        <!-- 自由沙盒入口 -->
+        <div @click="openFreeModeDetail" class="bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-slate-900 border border-purple-500/40 hover:border-purple-400 rounded-2xl p-4 cursor-pointer transition shadow-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold uppercase">自由沙盒</span>
+            <span class="text-[10px] text-purple-400 font-mono">无剧情枷锁</span>
+          </div>
+          <h2 class="text-base font-bold text-white flex items-center gap-1.5">
+            <span>✨ 完全自由模式 (自定义开篇)</span>
+          </h2>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            由你输入任意开篇情境与行动，同伴全心跟随你的剧情自由互动。
+          </p>
+        </div>
+
+        <!-- 经典剧本列表 -->
+        <div class="space-y-3 pt-1">
+          <div class="flex items-center justify-between px-1">
+            <span class="text-xs text-slate-400 font-semibold">📚 经典预设剧本库</span>
+            <span class="text-[11px] text-slate-500">共 {{ scripts.length }} 部</span>
+          </div>
+
+          <div v-for="script in scripts" :key="script.id" class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">{{ script.tag }}</span>
+            </div>
+            <h2 class="text-base font-bold text-white">{{ script.title }}</h2>
+            <p class="text-xs text-slate-400 leading-relaxed">{{ script.description }}</p>
+            <button @click="selectScript(script)" class="w-full py-2.5 bg-slate-700 hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold transition">选择此剧本</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 存档列表 -->
+      <section v-show="currentStep === 'ongoing'" class="h-full overflow-y-auto p-4 space-y-3 no-scrollbar">
+        <div v-if="activeSessions.length === 0" class="text-center py-12 text-xs text-slate-400">当前没有正在进行的探险存档</div>
+        <div v-for="sess in activeSessions" :key="sess.id" class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-3.5 space-y-2 text-xs">
+          <div class="flex items-center justify-between">
+            <span :class="sess.isFreeMode ? 'bg-purple-500/20 text-purple-300' : 'bg-indigo-500/20 text-indigo-300'" class="text-[10px] px-2 py-0.5 rounded-full font-medium">
+              {{ sess.isFreeMode ? '自由沙盒' : '经典剧本' }}
+            </span>
+            <span class="text-[10px] text-slate-400">{{ sess.title }}</span>
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button @click="resumeSession(sess)" class="flex-1 py-2 bg-indigo-600 text-white rounded-xl">继续探险</button>
+            <button @click="deleteSession(sess.id)" class="px-3 py-2 bg-slate-800 text-red-300 rounded-xl">删除</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 选人设配置 -->
+      <section v-show="currentStep === 'select_persona'" class="h-full overflow-y-auto p-4 space-y-4 no-scrollbar text-xs">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-3.5">
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+            {{ isFreeModeSelection ? '模式：自由沙盒' : '已选剧本' }}
+          </span>
+          <h2 class="font-bold text-white text-sm mt-0.5">{{ isFreeModeSelection ? '自定冒险舞台' : selectedScript?.title }}</h2>
+          <p v-if="!isFreeModeSelection" class="text-slate-400 mt-1">{{ selectedScript?.description }}</p>
+        </div>
+
+        <div v-if="isFreeModeSelection" class="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-3.5 space-y-2">
+          <label class="block font-semibold text-purple-300">起始剧情 / 舞台情境设定 (选填)</label>
+          <textarea v-model="freeModeCustomOpening" rows="2" placeholder="例如：深夜的画室突降暴雨、机甲驾驶舱内..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-white focus:outline-none"></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-slate-400 font-semibold">👤 你的身份 (面具)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <div v-for="up in userPersonaList" :key="up.id" @click="chosenUserPersonaId = up.id" :class="chosenUserPersonaId === up.id ? 'border-indigo-500 bg-indigo-950/50' : 'border-slate-700 bg-slate-800'" class="border rounded-xl p-2.5 cursor-pointer font-bold text-white">{{ up.name }}</div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-slate-400 font-semibold">
+            <span>👥 同行同伴 (支持修罗场多选)</span>
+            <span class="text-[10px] text-indigo-400">已选 {{ chosenPersonaIds.length }} 位</span>
+          </div>
+          <div v-for="p in personaList" :key="p.id" @click="togglePersonaSelection(p.id)" :class="chosenPersonaIds.includes(p.id) ? 'border-indigo-500 bg-indigo-950/50' : 'border-slate-700 bg-slate-800'" class="border rounded-xl p-3 cursor-pointer flex justify-between items-center">
+            <div>
+              <span class="font-bold text-white">{{ p.name }}</span>
+              <span class="text-[10px] ml-2 text-slate-400">称呼你: {{ p.userNickname }}</span>
+            </div>
+            <span>{{ chosenPersonaIds.includes(p.id) ? '✓' : '' }}</span>
+          </div>
+        </div>
+
+        <button @click="confirmPersonaAndEnterGame" class="w-full py-3 bg-indigo-600 text-white rounded-2xl font-semibold shadow-lg">启程</button>
+      </section>
+
+      <!-- 剧本推演区 -->
+      <section v-show="currentStep === 'game'" class="h-full flex flex-col relative">
+        <div class="bg-slate-800/95 px-3 py-1.5 border-b border-slate-700/60 flex items-center justify-between text-[11px] flex-wrap gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-amber-300 font-medium text-[10px]">{{ currentSession?.isFreeMode ? '自由推演' : '剧情推演' }}</span>
+            <button @click="showStyleModal = true" class="px-2 py-0.5 bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 rounded-md text-[10px]">
+              <span>✍️ {{ getCurrentStyleName() }}</span>
+            </button>
+            <div v-if="currentSession" class="flex items-center gap-0.5 bg-slate-950 border border-slate-700 rounded-md px-1.5 py-0.5 text-[10px]">
+              <span class="text-slate-400">篇幅:</span>
+              <select v-model.number="currentSession.targetWordCount" class="bg-transparent text-amber-200 focus:outline-none">
+                <option :value="800">800字</option>
+                <option :value="1200">1200字</option>
+                <option :value="1500">1500字</option>
+                <option :value="2000">2000字</option>
+                <option :value="2500">2500字</option>
+              </select>
+            </div>
+            <div v-if="currentSession" class="flex items-center gap-0.5 bg-slate-950 border border-indigo-500/30 rounded-md px-1.5 py-0.5 text-[10px]">
+              <span class="text-indigo-300">读上下文:</span>
+              <select v-model.number="currentSession.contextRounds" class="bg-transparent text-indigo-200 focus:outline-none font-bold">
+                <option :value="3">3轮</option>
+                <option :value="5">5轮</option>
+                <option :value="8">8轮</option>
+                <option :value="12">12轮</option>
+                <option :value="999">全部</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/90 px-3 py-1.5 border-b border-slate-800 flex items-center justify-between text-[11px] flex-wrap gap-1.5 shadow-sm">
+          <div class="flex items-center gap-1.5">
+            <button @click="showInventoryModal = true" class="px-2.5 py-1 bg-amber-950/70 hover:bg-amber-900 border border-amber-500/50 text-amber-300 rounded-lg text-[10px] font-semibold flex items-center gap-1">
+              <span>🎒 背包</span>
+              <span class="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[9px] font-bold">
+                {{ currentSession?.inventory?.length || 0 }}
+              </span>
+            </button>
+            <button @click="showSummaryModal = true" class="px-2 py-1 bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-200 rounded-lg text-[10px] font-medium">
+              <span>📝 备忘录</span>
+            </button>
+          </div>
+
+          <div class="flex items-center space-x-1 shrink-0">
+            <button @click="rewindLastRound" :disabled="isStreaming || !canRewind" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-300 border border-slate-700 rounded-md text-[10px]">
+              <span>⏪ 回退</span>
+            </button>
+            <button @click="resetCurrentGame" class="text-slate-400 hover:text-red-400 px-1 text-[10px]">重开</button>
+          </div>
+        </div>
+
+        <div ref="chatBoxRef" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+          <div v-for="(item, idx) in currentSession?.gameLogs || []" :key="idx" class="space-y-1.5">
+            <div v-if="item.type === 'player'" class="flex flex-col items-end">
+              <div v-if="!item.isEditing" class="max-w-[88%] bg-amber-600/90 text-white px-3.5 py-2 rounded-2xl rounded-tr-none text-xs leading-relaxed shadow">
+                👉 你的行动：{{ item.text }}
+              </div>
+              <div v-else class="w-full bg-slate-800 border border-amber-500/50 p-2 rounded-xl space-y-1.5">
+                <input v-model="item.editText" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none" />
+                <div class="flex justify-end gap-2 text-[10px]">
+                  <button @click="saveAndRegeneratePlayer(item, idx)" class="px-2 py-1 bg-amber-600 text-white rounded">保存并重回</button>
+                  <button @click="cancelEdit(item)" class="px-2 py-1 bg-slate-700 text-slate-300 rounded">取消</button>
+                </div>
+              </div>
+              <div v-if="!item.isEditing && !isStreaming" class="flex gap-2 text-[10px] text-slate-400 mt-1 px-1">
+                <button @click="startEdit(item)" class="hover:text-amber-300">✏️ 编辑</button>
+                <button @click="regenerateFromPlayer(idx)" class="hover:text-indigo-300">🔄 重回</button>
+                <button @click="rollbackToLog(idx)" class="hover:text-red-400">🎯 回溯</button>
+                <button @click="deleteLog(idx)" class="hover:text-red-400">🗑️ 删除</button>
+              </div>
+            </div>
+
+            <div v-else-if="item.type === 'engine'" class="space-y-2">
+              <div v-if="!item.isEditing" class="space-y-2">
+                <div v-if="item.images && item.images.length > 0" class="grid gap-2" :class="item.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'">
+                  <div v-for="(img, imgIdx) in item.images" :key="imgIdx" class="relative rounded-2xl overflow-hidden border border-slate-700 shadow bg-slate-950">
+                    <img :src="img.url" @click="previewImage(img.url)" class="w-full object-cover max-h-48 cursor-zoom-in" />
+                    <div class="p-1.5 bg-slate-900/90 text-[10px] text-slate-300 flex items-center justify-between">
+                      <span class="truncate">{{ img.title }}</span>
+                      <button @click="removeImage(item, imgIdx)" class="text-slate-400 hover:text-red-400">✕</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-4 bg-slate-800/90 border border-slate-700/80 rounded-2xl text-xs text-slate-100 leading-relaxed shadow-md space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-amber-400 font-semibold flex items-center gap-1.5 text-[11px]">
+                      <span>📖 剧情推演 · 人设驱动</span>
+                    </span>
+                    <button @click="searchMicroCues(item)" :disabled="item.isSearchingClues" class="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-[10px]">
+                      <span>{{ item.isSearchingClues ? '搜查中...' : '🔍 搜查微光线索' }}</span>
+                    </button>
+                  </div>
+
+                  <div class="whitespace-pre-wrap">{{ item.storyText }}</div>
+
+                  <div v-if="item.discoveredClues && item.discoveredClues.length > 0" class="pt-2 border-t border-slate-700/60 flex flex-wrap gap-1.5">
+                    <button v-for="(clue, cIdx) in item.discoveredClues" :key="cIdx" @click="addToInventory(clue)" class="px-2 py-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 rounded-lg text-[10px]">
+                      📦 收录【{{ clue.name }}】
+                    </button>
+                  </div>
+
+                  <div v-if="item.companionPOV" class="mt-2 p-2.5 bg-purple-950/40 border border-purple-500/40 rounded-xl space-y-1">
+                    <div class="text-[10px] text-purple-300 font-semibold flex justify-between">
+                      <span>👀 【同伴内心独白】</span>
+                      <button @click="item.companionPOV = ''">✕</button>
+                    </div>
+                    <p class="text-[11px] text-purple-100 italic whitespace-pre-wrap">{{ item.companionPOV }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="bg-slate-800 border border-indigo-500/50 p-2.5 rounded-xl space-y-2">
+                <textarea v-model="item.editStory" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white"></textarea>
+                <div class="flex justify-end gap-2 text-[10px]">
+                  <button @click="saveEditStory(item)" class="px-3 py-1 bg-indigo-600 text-white rounded">保存</button>
+                  <button @click="cancelEdit(item)" class="px-3 py-1 bg-slate-700 text-slate-300 rounded">取消</button>
+                </div>
+              </div>
+
+              <div v-if="!item.isEditing && !isStreaming" class="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 px-1 pt-1">
+                <button @click="openImageModal(item)" class="px-2 py-1 bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 rounded-lg">
+                  <span>🎨 生成插图</span>
+                </button>
+                <button @click="toggleCompanionPOV(item)" :disabled="item.isLoadingPOV" class="px-2 py-1 bg-purple-950/80 border border-purple-500/30 text-purple-300 rounded-lg">
+                  <span>{{ item.isLoadingPOV ? '窥探中...' : '👀 窥探TA们心声' }}</span>
+                </button>
+                <div class="ml-auto flex items-center gap-2">
+                  <button @click="rollbackToLog(idx)" class="hover:text-red-400">🎯 回溯</button>
+                  <button v-if="idx === currentSession.gameLogs.length - 1 && idx > 0" @click="regenerateLastResponse" class="hover:text-indigo-300">🔄 重选</button>
+                  <button @click="startEdit(item)" class="hover:text-slate-300">✏️ 编辑</button>
+                  <button v-if="idx > 0" @click="deleteLog(idx)" class="hover:text-red-400">🗑️ 删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isStreaming" class="p-3 bg-slate-800/80 border border-indigo-500/40 rounded-2xl space-y-2 text-xs">
+            <div class="flex justify-between items-center text-indigo-300">
+              <span class="animate-pulse">剧情推演中...</span>
+              <span class="font-mono text-[10px] text-amber-400">{{ streamElapsed.toFixed(1) }}s</span>
+            </div>
+            <div class="whitespace-pre-wrap text-slate-200">{{ streamingCleanText }}<span class="inline-block w-1.5 h-3 bg-amber-400 animate-pulse ml-0.5"></span></div>
+          </div>
+        </div>
+
+        <footer class="p-3 bg-slate-900 border-t border-slate-800 shrink-0 space-y-2">
+          <div v-if="currentSession?.pendingAction && !isStreaming" class="p-2 bg-indigo-950/80 border border-indigo-500/50 rounded-xl flex items-center justify-between">
+            <span class="text-[11px] text-indigo-200 truncate max-w-[240px]">已记录你的选择，等待接收回复...</span>
+            <button @click="triggerPendingAction" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow animate-pulse">
+              📨 接收 AI 回复
+            </button>
+          </div>
+
+          <div v-if="activeChoices.length > 0 && !isStreaming && !currentSession?.pendingAction" class="grid grid-cols-1 gap-1.5">
+            <button 
+              v-for="(choice, cIdx) in activeChoices" :key="cIdx"
+              :disabled="isActionLocked || isStreaming"
+              @click="chooseOption(choice)"
+              class="text-left px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs text-amber-200 border border-slate-700 shadow-sm transition">
+              {{ cIdx + 1 }}. {{ choice }}
+            </button>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <input 
+              v-model="customInput" 
+              @keydown.enter.prevent="submitCustomAction"
+              :disabled="isActionLocked || isStreaming"
+              type="text" 
+              placeholder="输入你的自定义行动..." 
+              class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" 
+            />
+            <button @click="submitCustomAction" :disabled="isActionLocked || isStreaming || !customInput.trim()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold">
+              行动
+            </button>
+          </div>
+        </footer>
+      </section>
+
+      <!-- 日常随聊准备页 -->
+      <section v-show="currentStep === 'daily_setup'" class="h-full overflow-y-auto p-4 space-y-4 no-scrollbar">
+        <div class="bg-gradient-to-r from-purple-950/40 to-slate-900 border border-purple-500/30 rounded-2xl p-4 space-y-1">
+          <h2 class="text-sm font-bold text-white flex items-center gap-1.5">💬 发起日常随聊</h2>
+          <p class="text-xs text-slate-400">选择属于你们的身份与闲暇情境。</p>
+        </div>
+
+        <div v-if="activeDailySessions.length > 0" class="space-y-2">
+          <div class="text-xs text-slate-400 px-1 font-semibold">🕒 继续先前的对话</div>
+          <div class="space-y-1.5">
+            <div v-for="d in activeDailySessions" :key="d.id" class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 flex justify-between items-center">
+              <div>
+                <h4 class="text-xs font-bold text-white">{{ d.title }}</h4>
+                <p class="text-[10px] text-slate-400">{{ getUserPersonaName(d.userPersonaId) }} & {{ getPersonaName(d.personaId) }}</p>
+              </div>
+              <div class="flex gap-1.5">
+                <button @click="resumeDailySession(d)" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs">进入</button>
+                <button @click="deleteDailySession(d.id)" class="px-2.5 py-1 bg-slate-700 text-slate-400 hover:text-red-400 rounded-lg text-xs">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400 px-1 font-semibold">👤 你的身份 (面具)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <div 
+              v-for="up in userPersonaList" :key="up.id"
+              @click="chosenUserPersonaId = up.id"
+              :class="chosenUserPersonaId === up.id ? 'border-purple-500 bg-purple-950/40 ring-1 ring-purple-500' : 'border-slate-700 bg-slate-800/60'"
+              class="border rounded-xl p-2.5 cursor-pointer transition">
+              <h4 class="text-xs font-bold text-white truncate">{{ up.name }}</h4>
+              <p class="text-[10px] text-slate-400 mt-0.5 truncate">{{ up.appearance }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400 px-1 font-semibold">👥 聊天同伴 (Char)</label>
+          <div class="space-y-2">
+            <div 
+              v-for="p in personaList" :key="p.id"
+              @click="chosenPersonaId = p.id"
+              :class="chosenPersonaId === p.id ? 'border-purple-500 bg-purple-950/40 ring-1 ring-purple-500' : 'border-slate-700 bg-slate-800/60'"
+              class="border rounded-xl p-3 cursor-pointer transition flex items-center justify-between">
+              <div>
+                <h4 class="text-xs font-bold text-white">{{ p.name }}</h4>
+                <p class="text-[10px] text-slate-400">称呼你为：{{ p.userNickname }}</p>
+              </div>
+              <span v-if="chosenPersonaId === p.id" class="text-xs text-purple-400 font-bold">✓</span>
+            </div>
+          </div>
+        </div>
+
+        <button @click="startNewDailyChat" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-xs font-semibold tracking-wider transition shadow-lg mt-2">
+          开启与 {{ getPersonaName(chosenPersonaId) }} 的日常闲聊
+        </button>
+      </section>
+
+      <!-- 日常聊天室 -->
+      <section v-show="currentStep === 'daily_chat'" class="h-full flex flex-col relative">
+        <div class="bg-slate-800/90 px-3 py-2 border-b border-slate-700/60 flex items-center justify-between text-xs flex-wrap gap-1">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="font-bold text-white">{{ getPersonaName(currentDailySession?.personaId) }}</span>
+            <span class="text-[10px] text-purple-300 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-500/30">
+              你: {{ getUserPersonaName(currentDailySession?.userPersonaId) }}
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px]">
+            <button @click="rewindDailyRound" :disabled="isDailyStreaming || (currentDailySession?.messages || []).length <= 1" class="px-2 py-0.5 bg-slate-700 text-slate-200 rounded disabled:opacity-30">⏪ 回溯</button>
+          </div>
+        </div>
+
+        <div ref="dailyChatBoxRef" class="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+          <div v-for="(msg, mIdx) in currentDailySession?.messages || []" :key="mIdx" class="space-y-1">
+            <div v-if="msg.role === 'user'" class="flex flex-col items-end">
+              <div class="max-w-[85%] bg-purple-600 text-white px-3.5 py-2 rounded-2xl rounded-tr-none text-xs leading-relaxed shadow">
+                {{ msg.text }}
+              </div>
+            </div>
+            <div v-else class="flex flex-col items-start space-y-1 max-w-[90%]">
+              <span class="text-[10px] text-slate-400 px-1">{{ getPersonaName(currentDailySession.personaId) }}</span>
+              <div class="bg-slate-800 border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-2xl rounded-tl-none text-xs leading-relaxed shadow whitespace-pre-wrap">
+                {{ msg.text }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="p-3 bg-slate-900 border-t border-slate-800 shrink-0 space-y-2">
+          <div v-if="currentDailySession?.pendingMessage && !isDailyStreaming" class="p-2 bg-purple-950/80 border border-purple-500/50 rounded-xl flex items-center justify-between">
+            <span class="text-[11px] text-purple-200 truncate max-w-[240px]">等待接收回复...</span>
+            <button @click="triggerDailyPendingMessage" class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold shadow animate-pulse">
+              📨 接收回复
+            </button>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <input 
+              v-model="dailyInput" 
+              @keydown.enter.prevent="submitDailyInput"
+              :disabled="isDailyStreaming"
+              type="text" 
+              placeholder="聊聊近况或说句悄悄话..." 
+              class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" 
+            />
+            <button @click="submitDailyInput" :disabled="isDailyStreaming || !dailyInput.trim()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold">
+              发送
+            </button>
+          </div>
+        </footer>
+      </section>
+
+      <!-- 人设管理中心 -->
+      <section v-show="currentStep === 'persona_mgr'" class="h-full overflow-y-auto p-4 space-y-4 no-scrollbar">
+        <div class="grid grid-cols-2 gap-2 bg-slate-800/80 p-1 rounded-xl">
+          <button @click="personaTab = 'companion'" :class="personaTab === 'companion' ? 'bg-indigo-600 text-white' : 'text-slate-400'" class="py-2 text-xs font-semibold rounded-lg">👥 同伴伴侣 (Char 人设)</button>
+          <button @click="personaTab = 'user'" :class="personaTab === 'user' ? 'bg-indigo-600 text-white' : 'text-slate-400'" class="py-2 text-xs font-semibold rounded-lg">👤 我的身份 (面具)</button>
+        </div>
+
+        <div v-show="personaTab === 'companion'" class="space-y-4">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1 font-semibold">
+              <span>同伴卡片库</span>
+              <button @click="resetEditingPersona" class="text-indigo-400 hover:underline text-[11px]">+ 新建空白</button>
+            </div>
+
+            <div class="space-y-2.5">
+              <div 
+                v-for="p in personaList" :key="p.id" 
+                class="border border-slate-700 bg-slate-800/70 rounded-2xl p-3.5 space-y-2 transition shadow-sm">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-white">{{ p.name }}</h4>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-indigo-300">称呼你: {{ p.userNickname }}</span>
+                </div>
+                <p class="text-xs text-slate-300 line-clamp-2">外貌: {{ p.appearance }}</p>
+                <div class="flex items-center gap-1.5 pt-2 border-t border-slate-700/60 text-xs">
+                  <button @click="quickStartDailyChatFromPersona(p.id)" class="flex-1 py-1.5 bg-purple-600/80 hover:bg-purple-600 text-white rounded-lg font-medium">💬 找TA闲聊</button>
+                  <button @click="loadPersonaToEdit(p)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">编辑</button>
+                  <button v-if="personaList.length > 1" @click="deletePersona(p.id)" class="px-2 py-1.5 bg-slate-700 hover:bg-red-500/20 text-slate-400 hover:text-red-300 rounded-lg">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 编辑表单 -->
+          <div id="persona-edit-form" class="bg-slate-900/80 p-4 border border-slate-800 rounded-2xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-amber-400">{{ editingPersonaId ? `✏️ 正在编辑同伴：${personaForm.name}` : '➕ 新建同伴人设' }}</h3>
+              <button v-if="editingPersonaId" @click="resetEditingPersona" class="text-xs text-slate-400 hover:text-white">取消编辑</button>
+            </div>
+            
+            <input v-model="personaForm.name" placeholder="同伴姓名 (如: 沈知韫)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+            <input v-model="personaForm.userNickname" placeholder="对你的专属称谓 (如: 小朋友)" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+            <textarea v-model="personaForm.appearance" rows="2" placeholder="外貌穿着描述..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea>
+            
+            <div>
+              <label class="block text-[11px] font-semibold text-rose-300 mb-1">✨ 详细人设与行为准则 (Character Persona / 核心人设)</label>
+              <textarea v-model="personaForm.personaPrompt" rows="4" placeholder="在此粘贴长篇角色设定卡、背景经历、性格特征..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none leading-relaxed"></textarea>
+            </div>
+
+            <!-- 生图绑定区：Seed 与 参考图垫图 -->
+            <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+              <div class="font-semibold text-indigo-300">🎨 同伴专属生图参数</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] text-amber-300 mb-1">🎲 默认随机种子 (Seed)</label>
+                  <input v-model.number="personaForm.defaultSeed" type="number" placeholder="留空自动随机" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-white focus:outline-none text-[11px]" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 mb-1">📷 本地参考图 / 垫图</label>
+                  <input type="file" accept="image/*" @change="handlePersonaImageUpload" class="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:bg-indigo-600 file:text-white cursor-pointer" />
+                </div>
+              </div>
+              <div v-if="personaForm.refImage" class="flex items-center gap-2 bg-slate-900 p-2 rounded-lg border border-slate-700">
+                <img :src="personaForm.refImage" class="w-10 h-10 object-cover rounded-md border border-slate-600" />
+                <span class="text-[10px] text-slate-300 truncate flex-1">已加载参考垫图</span>
+                <button @click="personaForm.refImage = ''" class="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">✕ 移除</button>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button @click="savePersonaCard" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition">
+                {{ editingPersonaId ? '保存修改' : '保存为人设卡' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 身份面具管理 -->
+        <div v-show="personaTab === 'user'" class="space-y-4">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1 font-semibold">
+              <span>面具身份库</span>
+              <button @click="resetEditingUserPersona" class="text-indigo-400 hover:underline text-[11px]">+ 新建面具</button>
+            </div>
+
+            <div class="space-y-2.5">
+              <div 
+                v-for="up in userPersonaList" :key="up.id" 
+                class="border border-slate-700 bg-slate-800/70 rounded-2xl p-3.5 space-y-2 transition shadow-sm">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-bold text-white">{{ up.name }}</h4>
+                  <span v-if="chosenUserPersonaId === up.id" class="text-[9px] px-2 py-0.5 rounded-full bg-indigo-500 text-white font-bold">当前默认</span>
+                </div>
+                <p class="text-xs text-slate-300">形象: {{ up.appearance }}</p>
+                <div class="flex items-center gap-1.5 pt-2 border-t border-slate-700/60 text-xs">
+                  <button @click="setDefaultUserPersona(up.id)" class="flex-1 py-1.5 bg-indigo-600/70 hover:bg-indigo-600 text-white rounded-lg font-medium">✓ 设为默认</button>
+                  <button @click="loadUserPersonaToEdit(up)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">编辑</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="user-persona-edit-form" class="bg-slate-900/80 p-4 border border-slate-800 rounded-2xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-indigo-400">{{ editingUserPersonaId ? `✏️ 编辑身份：${userPersonaForm.name}` : '➕ 新建我的身份' }}</h3>
+              <button v-if="editingUserPersonaId" @click="resetEditingUserPersona" class="text-xs text-slate-400 hover:text-white">取消编辑</button>
+            </div>
+            
+            <input v-model="userPersonaForm.name" placeholder="你的身份姓名" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+            <textarea v-model="userPersonaForm.appearance" rows="3" placeholder="外貌与背景描述..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"></textarea>
+            
+            <button @click="saveUserPersonaCard" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition">
+              保存身份卡
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 接口设置 -->
+      <section v-show="currentStep === 'settings'" class="h-full overflow-y-auto p-4 space-y-4 no-scrollbar text-xs">
+        <div class="space-y-2.5 bg-slate-800/80 border border-slate-700 p-3.5 rounded-2xl">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-amber-400">⚙️ 文本模型 API 预设方案管理</h3>
+            <span class="text-[10px] text-indigo-400 font-mono">{{ apiPresets.length }} 个预设</span>
+          </div>
+
+          <div class="flex gap-2">
+            <select v-model="selectedPresetId" @change="applyPreset(selectedPresetId)" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white">
+              <option v-for="pre in apiPresets" :key="pre.id" :value="pre.id">{{ pre.name }}</option>
+            </select>
+            <button @click="deleteCurrentPreset" :disabled="apiPresets.length <= 1" class="px-3 py-1.5 bg-slate-700 text-red-400 rounded-xl disabled:opacity-40">删除</button>
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <input v-model="newPresetName" placeholder="新预设名称" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+            <button @click="saveAsNewPreset" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl">保存预设</button>
+          </div>
+
+          <div class="border-t border-slate-700/60 pt-2 space-y-2">
+            <input v-model="settings.baseUrl" placeholder="Base URL (例如: https://api.uu6.top/)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+            <input v-model="settings.apiKey" type="password" placeholder="API Key" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white font-mono" />
+            
+            <button @click="fetchModelList" :disabled="isFetchingModels" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-medium shadow">
+              {{ isFetchingModels ? '正在拉取模型中...' : '拉取模型列表' }}
+            </button>
+            
+            <select v-if="modelList.length > 0" v-model="settings.model" class="w-full bg-slate-900 border border-indigo-500/50 rounded-xl px-3 py-1.5 text-amber-200">
+              <option v-for="m in modelList" :key="m" :value="m">{{ m }}</option>
+            </select>
+            
+            <input v-model="settings.model" placeholder="Model Name (如: gemini-2.5-flash)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+          </div>
+        </div>
+
+        <div class="space-y-2.5 bg-slate-800/80 border border-slate-700 p-3.5 rounded-2xl">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-amber-400">🎨 生图引擎预设方案管理</h3>
+            <span class="text-[10px] text-amber-300 font-mono">{{ imgPresets.length }} 个预设</span>
+          </div>
+
+          <div class="flex gap-2">
+            <select v-model="selectedImgPresetId" @change="applyImgPreset(selectedImgPresetId)" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white">
+              <option v-for="pre in imgPresets" :key="pre.id" :value="pre.id">{{ pre.name }}</option>
+            </select>
+            <button @click="deleteCurrentImgPreset" :disabled="imgPresets.length <= 1" class="px-3 py-1.5 bg-slate-700 text-red-400 rounded-xl disabled:opacity-40">删除</button>
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <input v-model="newImgPresetName" placeholder="新生图预设名" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+            <button @click="saveAsNewImgPreset" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl">保存预设</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <button type="button" @click="imageConfig.provider = 'public'" :class="imageConfig.provider === 'public' ? 'bg-amber-600 text-white font-bold' : 'bg-slate-900 text-slate-400'" class="py-1.5 rounded-xl border border-slate-700">公开免费 (Flux)</button>
+            <button type="button" @click="imageConfig.provider = 'custom'" :class="imageConfig.provider === 'custom' ? 'bg-amber-600 text-white font-bold' : 'bg-slate-900 text-slate-400'" class="py-1.5 rounded-xl border border-slate-700">自定义生图 API</button>
+          </div>
+
+          <div v-if="imageConfig.provider === 'custom'" class="space-y-2 pt-2 border-t border-slate-700/60">
+            <input v-model="imageConfig.baseUrl" placeholder="生图 Base URL" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+            <input v-model="imageConfig.apiKey" type="password" placeholder="生图 API Key" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white font-mono" />
+            <input v-model="imageConfig.model" placeholder="生图模型 (如: dall-e-3)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white" />
+          </div>
+        </div>
+
+        <button @click="saveSettings" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition shadow-lg">
+          保存全部配置与预设
+        </button>
+      </section>
+
+      <!-- 弹窗合集 -->
+      <div v-if="showCharAuthoredModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-rose-500/40 rounded-3xl p-4 w-full max-w-sm max-h-[90%] flex flex-col space-y-3 shadow-2xl overflow-y-auto no-scrollbar text-xs">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-rose-300 flex items-center gap-1">💌 TA执笔 · 专属反向带跑</h3>
+            <button @click="showCharAuthoredModal = false" class="text-slate-400 hover:text-white">关闭</button>
+          </div>
+          <p class="text-slate-300 leading-relaxed">选择一位同伴，TA将根据核心人设与你们的记忆，反向为你定制一场专属探险！</p>
+          <div class="space-y-1.5">
+            <label class="block font-semibold text-rose-300">1. 选择为你执笔带跑的同伴 (Char)</label>
+            <select v-model="authorCharId" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none">
+              <option v-for="p in personaList" :key="p.id" :value="p.id">{{ p.name }}（称呼你: {{ p.userNickname }}）</option>
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block font-semibold text-rose-300">2. 你的入局身份 (User Persona)</label>
+            <select v-model="authorUserPersonaId" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none">
+              <option v-for="up in userPersonaList" :key="up.id" :value="up.id">{{ up.name }}</option>
+            </select>
+          </div>
+          <button @click="generateAndLaunchCharAuthoredGame" :disabled="isGeneratingCharScript" class="w-full py-3 bg-gradient-to-r from-rose-600 to-purple-600 text-white rounded-2xl font-semibold shadow-lg">
+            <span>{{ isGeneratingCharScript ? '正在由 TA 构思世界观...' : '✨ 让 TA 为我执笔造梦' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="showAffectionModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-3xl p-4 w-full max-w-sm max-h-[85%] flex flex-col space-y-3 shadow-2xl overflow-y-auto no-scrollbar text-xs">
+          <div class="flex justify-between items-center"><h3 class="font-bold text-indigo-300">🗺️ 好感羁绊看板</h3><button @click="showAffectionModal = false" class="text-slate-400">关闭</button></div>
+          <div v-for="p in personaList" :key="p.id" class="bg-slate-800 p-3.5 rounded-xl space-y-1.5">
+            <div class="font-bold text-white flex justify-between">
+              <span>{{ p.name }}</span>
+              <span class="text-indigo-300">{{ getAffectionStage(p.id) }}</span>
+            </div>
+            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+              <div class="bg-gradient-to-r from-indigo-500 to-rose-500 h-full transition-all duration-300" :style="{ width: getAffectionScore(p.id) + '%' }"></div>
+            </div>
+            <p class="text-[10px] text-slate-400 italic">{{ getAffectionDesc(p.id) }}</p>
+          </div>
+          <button @click="showAffectionModal = false" class="py-2 bg-slate-800 text-slate-200 rounded-xl">返回</button>
+        </div>
+      </div>
+
+      <div v-if="showLetterModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-rose-500/40 rounded-3xl p-4 w-full max-w-sm max-h-[88%] flex flex-col space-y-3 shadow-2xl overflow-y-auto no-scrollbar text-xs">
+          <div class="flex justify-between items-center"><h3 class="font-bold text-rose-300">💌 TA 的深夜亲笔来信</h3><button @click="showLetterModal = false" class="text-slate-400">关闭</button></div>
+          <select v-model="letterAuthorId" class="w-full bg-slate-950 rounded p-2 text-white">
+            <option v-for="p in personaList" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+          <div v-if="currentMidnightLetter" class="bg-rose-950/30 border border-rose-500/30 p-3.5 rounded-2xl text-rose-100 font-serif whitespace-pre-wrap leading-relaxed">{{ currentMidnightLetter }}</div>
+          <button @click="fetchMidnightLetter" :disabled="isGeneratingLetter" class="py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-semibold shadow-lg">
+            {{ isGeneratingLetter ? '拆信中...' : '✨ 查收信件' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="showInventoryModal" class="absolute inset-0 bg-black/70 backdrop-blur-sm z-30 flex flex-col justify-end">
+        <div class="bg-slate-900 border-t border-slate-700 rounded-t-2xl p-4 max-h-[80%] flex flex-col space-y-3">
+          <div class="flex justify-between items-center"><h3 class="text-sm font-bold text-amber-400">🎒 随身背包</h3><button @click="showInventoryModal = false" class="text-slate-400 text-xs">关闭</button></div>
+          <div v-if="!currentSession?.inventory || currentSession.inventory.length === 0" class="text-center py-6 text-xs text-slate-500">暂无收集到的线索物品。</div>
+          <div v-else class="space-y-2 overflow-y-auto max-h-56 no-scrollbar">
+            <div v-for="(item, iIdx) in currentSession.inventory" :key="iIdx" class="bg-slate-800 border border-slate-700 rounded-xl p-2.5 flex justify-between items-center text-xs">
+              <div><h4 class="font-bold text-amber-200">📦 {{ item.name }}</h4><p class="text-[10px] text-slate-400">{{ item.desc }}</p></div>
+              <button @click="currentSession.inventory.splice(iIdx, 1)" class="px-2 py-1 bg-slate-700 text-red-400 rounded text-[10px]">丢弃</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showSummaryModal" class="absolute inset-0 bg-black/70 backdrop-blur-sm z-30 flex flex-col justify-end">
+        <div class="bg-slate-900 border-t border-slate-700 rounded-t-2xl p-4 max-h-[85%] flex flex-col space-y-3">
+          <div class="flex justify-between items-center"><h3 class="text-sm font-bold text-amber-400">📝 冒险备忘录</h3><button @click="showSummaryModal = false" class="text-slate-400 text-xs">关闭</button></div>
+          <textarea v-if="currentSession" v-model="currentSession.storySummary" rows="6" placeholder="点击下方一键总结提取线索与重要进展..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none"></textarea>
+          <button @click="generateAiSummary" :disabled="isSummarizing" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-medium shadow">
+            {{ isSummarizing ? '正在提炼线索中...' : '🤖 一键提取备忘要点' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="showStyleModal" class="absolute inset-0 bg-black/75 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl p-4 w-full max-w-sm max-h-[85%] flex flex-col space-y-3">
+          <div class="flex items-center justify-between"><h3 class="text-sm font-bold text-indigo-300">✍️ 自定义文风管理</h3><button @click="showStyleModal = false" class="text-slate-400 text-xs">关闭</button></div>
+          <div class="space-y-2 overflow-y-auto max-h-48 no-scrollbar">
+            <div v-for="st in customWritingStyles" :key="st.id" @click="currentSession.selectedStyleId = st.id; showStyleModal = false;" :class="currentSession?.selectedStyleId === st.id ? 'border-indigo-500 bg-indigo-950/50' : 'border-slate-800 bg-slate-800/60'" class="border rounded-xl p-2 cursor-pointer text-xs">
+              <div class="font-bold text-white">{{ st.name }}</div><div class="text-[10px] text-slate-400 truncate">{{ st.prompt }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="showImageModal" class="absolute inset-0 bg-black/75 backdrop-blur-sm z-40 flex flex-col justify-end">
+        <div class="bg-slate-900 border-t border-slate-700 rounded-t-2xl p-4 space-y-3 max-h-[85%] overflow-y-auto no-scrollbar">
+          <div class="flex justify-between items-center"><h3 class="text-sm font-bold text-amber-400">🎨 高清插画定制</h3><button @click="showImageModal = false" class="text-slate-400 text-xs">关闭</button></div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" @click="imageGenOptions.type = 'char'" :class="imageGenOptions.type === 'char' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'" class="py-1.5 rounded-lg text-xs">立绘</button>
+            <button type="button" @click="imageGenOptions.type = 'scene'" :class="imageGenOptions.type === 'scene' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'" class="py-1.5 rounded-lg text-xs">氛围</button>
+            <button type="button" @click="imageGenOptions.type = 'combo'" :class="imageGenOptions.type === 'combo' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'" class="py-1.5 rounded-lg text-xs">合影</button>
+          </div>
+          <button @click="confirmAndGenerateImage" :disabled="isGeneratingImageNow" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold">
+            {{ isGeneratingImageNow ? '渲染中...' : '✨ 开始生图' }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="previewImgUrl" @click="previewImgUrl = ''" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <img :src="previewImgUrl" class="max-w-full max-h-full object-contain rounded-xl" />
+      </div>
+
+    </main>
+  </div>
+
+  <!-- 按依赖顺序引入三个分工明确的脚本 -->
+  <script src="./config.js"></script>
+  <script src="./api.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
