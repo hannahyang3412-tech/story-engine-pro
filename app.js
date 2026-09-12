@@ -2,6 +2,13 @@ const { createApp, ref, reactive, computed, nextTick, watch } = Vue;
 
 createApp({
   setup() {
+    // 全局视觉风格主题：'dark'(沉浸暗夜冷灰) 或 'warm'(暖柔治愈暖杏)
+    const currentTheme = ref(localStorage.getItem('se_theme_style') || 'warm');
+    const toggleTheme = () => {
+      currentTheme.value = currentTheme.value === 'warm' ? 'dark' : 'warm';
+      localStorage.setItem('se_theme_style', currentTheme.value);
+    };
+
     // 路由状态机
     const currentStep = ref('boot');
     const previousStep = ref('mode_hub');
@@ -105,13 +112,13 @@ createApp({
 
     const currentTitle = computed(() => {
       switch (currentStep.value) {
-        case 'mode_hub': return '空间枢纽';
+        case 'mode_hub': return '时空枢纽';
         case 'scripts': return '剧本大厅';
         case 'ongoing': return '剧情存档';
         case 'select_persona': return '配置入局';
         case 'game': return currentSession.value?.title || '探险中';
-        case 'daily_setup': return '日常随聊配置';
-        case 'daily_chat': return '日常聊天室';
+        case 'daily_setup': return '随聊配置';
+        case 'daily_chat': return '日常聊天';
         case 'persona_mgr': return '人设中心';
         case 'settings': return '接口配置';
         default: return '';
@@ -270,15 +277,15 @@ createApp({
     };
     const getAffectionStage = pId => {
       const sc = getAffectionScore(pId);
-      if (sc < 60) return '初识渐生 (Warm)';
-      if (sc < 85) return '心动暧昧 (Sweet)';
-      return '生死相许 (Deep Bond)';
+      if (sc < 60) return '初识浅遇';
+      if (sc < 85) return '心照不宣';
+      return '相濡以沫';
     };
     const getAffectionDesc = pId => {
       const sc = getAffectionScore(pId);
-      if (sc < 60) return '“虽然相处尚浅，但TA对你的注意力正悄然增加。”';
-      if (sc < 85) return '“眼神的交汇与克制的心跳，昭示着彼此不再只是寻常同伴。”';
-      return '“灵魂与执念紧紧缠绕，无论前路何方，TA都将永远护你身后。”';
+      if (sc < 60) return '“相遇如初春积雪初融，TA的视线总不自觉为你多停留片刻。”';
+      if (sc < 85) return '“指尖若有似无的触碰，藏在微垂眼睫下的在意已清晰可辨。”';
+      return '“无论是深渊还是人间，只要你唤TA的名字，TA便跨越所有险阻奔赴你。”';
     };
 
     const openMidnightLetterModal = () => {
@@ -802,6 +809,7 @@ ${currentSession.value.storySummary ? `【此前剧情关键线索备忘】：\n
     const getUserPersonaName = upId => userPersonaList.value.find(u => u.id === upId)?.name || '你';
 
     return {
+      currentTheme, toggleTheme,
       currentStep, previousStep, customInput, isStreaming, isActionLocked, streamElapsed, streamingCleanText,
       chatBoxRef, showAffectionModal, showLetterModal, showInventoryModal, showSummaryModal, showStyleModal,
       showImageModal, showCharAuthoredModal, isGeneratingCharScript, authorCharId, authorUserPersonaId,
